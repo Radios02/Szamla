@@ -9,16 +9,24 @@
     <h1>Számlák</h1>
     <h2>Új számla</h2>
     <form id="invoice-form">
+        <h3>Kiállító</h3>
         <input name="issuer_name" placeholder="Kiállító neve" required>
         <input name="issuer_address" placeholder="Kiállító címe" required>
         <input name="issuer_tax_number" placeholder="Kiállító adószáma" required>
-        <select name="customer_id" required></select>
-        <input name="invoice_number" placeholder="Számla száma" required>
-        <input name="issue_date" type="date" placeholder="Számla kelte" required>
+        <h3>Vevő</h3>
+        <input name="customer_name" placeholder="Vevő neve" required>
+        <input name="customer_address" placeholder="Vevő címe" required>
+        <input name="customer_tax_number" placeholder="Vevő adószáma" required>
+        <h3>Számla adatok</h3>
         <input name="fulfillment_date" type="date" placeholder="Teljesítés dátuma" required>
-        <input name="payment_deadline" type="date" placeholder="Fizetési határidő" required>
         <input name="total_amount" type="number" placeholder="Végösszeg" required>
-        <input name="vat_amount" type="number" placeholder="ÁFA nagysága" required>
+        <select name="vat_percent" required>
+            <option value="">ÁFA kulcs</option>
+            <option value="5">5%</option>
+            <option value="18">18%</option>
+            <option value="27">27%</option>
+        </select>
+        <div id="vat-amount-info"></div>
         <button type="submit">Mentés</button>
     </form>
     <button id="load-invoices">Számlák betöltése</button>

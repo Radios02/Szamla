@@ -9,28 +9,23 @@ const db = new Database(dbPath);
 
 // TÁBLÁK LÉTREHOZÁSA
 db.exec(`
-CREATE TABLE IF NOT EXISTS customers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL,
-    address TEXT NOT NULL,
-    tax_number TEXT NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS invoices (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    issuer_name TEXT NOT NULL,
-    issuer_address TEXT NOT NULL,
-    issuer_tax_number TEXT NOT NULL,
-    customer_id INTEGER NOT NULL,
-    invoice_number TEXT NOT NULL,
-    issue_date TEXT NOT NULL,
-    fulfillment_date TEXT NOT NULL,
-    payment_deadline TEXT NOT NULL,
-    total_amount REAL NOT NULL,
-    vat_amount REAL NOT NULL,
-    FOREIGN KEY (customer_id) REFERENCES customers(id)
-);
-`);
+    CREATE TABLE IF NOT EXISTS invoices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        issuer_name TEXT NOT NULL,
+        issuer_address TEXT NOT NULL,
+        issuer_tax_number TEXT NOT NULL,
+        customer_name TEXT NOT NULL,
+        customer_address TEXT NOT NULL,
+        customer_tax_number TEXT NOT NULL,
+        invoice_number TEXT NOT NULL UNIQUE,
+        issue_date TEXT NOT NULL,
+        fulfillment_date TEXT NOT NULL,
+        payment_deadline TEXT NOT NULL,
+        total_amount REAL NOT NULL,
+        vat_percent INTEGER NOT NULL,
+        vat_amount REAL NOT NULL
+    );
+    `);
 
 // ALAP ADATOK FELTÖLTÉSE (ha üres)
 const customerCount = db.prepare("SELECT COUNT(*) as cnt FROM customers").get().cnt;

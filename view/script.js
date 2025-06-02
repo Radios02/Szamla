@@ -2,6 +2,17 @@ document.getElementById("load-invoices").onclick = loadInvoices;
 const form = document.getElementById("invoice-form");
 const customerSelect = form.customer_id;
 
+function calcVatAmount() {
+    const total = parseFloat(form.total_amount.value) || 0;
+    const vat = parseInt(form.vat_percent.value) || 0;
+    const vatAmount = Math.round(total * vat / 100);
+    document.getElementById("vat-amount-info").textContent =
+        vat ? `ÁFA összege: ${vatAmount} Ft` : '';
+}
+
+form.total_amount.oninput = calcVatAmount;
+form.vat_percent.onchange = calcVatAmount;
+
 async function loadCustomers() {
     const res = await fetch("/customers");
     const customers = await res.json();
@@ -15,8 +26,20 @@ async function loadInvoices() {
     const res = await fetch("/invoices");
     const invoices = await res.json();
     document.getElementById("invoices").innerHTML = invoices.map(inv => `
-        <div>
-            <b>${inv.invoice_number}</b> - ${inv.customer_name} - ${inv.total_amount} Ft (ÁFA: ${inv.vat_amount} Ft)
+        <div class="invoice-card">
+            <div><b>Számla száma:</b> ${inv.invoice_number}</div>
+            <div><b>Kiállító neve:</b> ${inv.issuer_name}</div>
+            <div><b>Kiállító címe:</b> ${inv.issuer_address}</div>
+            <div><b>Kiállító adószáma:</b> ${inv.issuer_tax_number}</div>
+            <div><b>Vevő neve:</b> ${inv.customer_name}</div>
+            <div><b>Vevő címe:</b> ${inv.customer_address}</div>
+            <div><b>Vevő adószáma:</b> ${inv.customer_tax_number}</div>
+            <div><b>Számla kelte:</b> ${inv.issue_date}</div>
+            <div><b>Teljesítés dátuma:</b> ${inv.fulfillment_date}</div>
+            <div><b>Fizetési határidő:</b> ${inv.payment_deadline}</div>
+            <div><b>Végösszeg:</b> ${inv.total_amount} Ft</div>
+            <div><b>ÁFA kulcs:</b> ${inv.vat_percent}%</div>
+            <div><b>ÁFA nagysága:</b> ${inv.vat_amount} Ft</div>
             <button onclick="deleteInvoice(${inv.id})">Törlés</button>
         </div>
     `).join("");
@@ -25,8 +48,6 @@ async function loadInvoices() {
 form.onsubmit = async (e) => {
     e.preventDefault();
     const data = Object.fromEntries(new FormData(form));
-    data.total_amount = parseFloat(data.total_amount);
-    data.vat_amount = parseFloat(data.vat_amount);
     const res = await fetch("/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -34,6 +55,7 @@ form.onsubmit = async (e) => {
     });
     if (res.ok) {
         form.reset();
+        document.getElementById("vat-amount-info").textContent = '';
         loadInvoices();
     } else {
         alert("Hiba a mentéskor!");
@@ -45,3 +67,6 @@ window.deleteInvoice = async (id) => {
     await fetch(`/invoices/${id}`, { method: "DELETE" });
     loadInvoices();
 };
+
+// Oldal betöltésekor automatikusan betöltjük a számlákat
+loadInvoices();
