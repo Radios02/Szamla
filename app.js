@@ -46,6 +46,16 @@ app.post("/invoices", (req, res) => {
     }
 });
 
+// Számla módosítása
+app.put("/invoices/:id", (req, res) => {
+    try {
+        db.updateInvoice(req.params.id, req.body);
+        res.status(200).json({ message: "Sikeres módosítás" });
+    } catch (err) {
+        res.status(400).json({ message: `${err}` });
+    }
+});
+
 // Számla törlése
 app.delete("/invoices/:id", (req, res) => {
     try {

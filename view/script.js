@@ -40,6 +40,7 @@ async function loadInvoices() {
             <div><b>Végösszeg:</b> ${inv.total_amount} Ft</div>
             <div><b>ÁFA kulcs:</b> ${inv.vat_percent}%</div>
             <div><b>ÁFA nagysága:</b> ${inv.vat_amount} Ft</div>
+            <button onclick="editInvoice(${inv.id})">Szerkesztés</button>
             <button onclick="deleteInvoice(${inv.id})">Törlés</button>
         </div>
     `).join("");
@@ -66,6 +67,22 @@ window.deleteInvoice = async (id) => {
     if (!confirm("Biztos törlöd?")) return;
     await fetch(`/invoices/${id}`, { method: "DELETE" });
     loadInvoices();
+};
+
+window.editInvoice = async (id) => {
+    const res = await fetch(`/invoices/${id}`);
+    const inv = await res.json();
+    form.dataset.editId = id;
+    form.issuer_name.value = inv.issuer_name;
+    form.issuer_address.value = inv.issuer_address;
+    form.issuer_tax_number.value = inv.issuer_tax_number;
+    form.customer_name.value = inv.customer_name;
+    form.customer_address.value = inv.customer_address;
+    form.customer_tax_number.value = inv.customer_tax_number;
+    form.fulfillment_date.value = inv.fulfillment_date;
+    form.total_amount.value = inv.total_amount;
+    form.vat_percent.value = inv.vat_percent;
+    calcVatAmount();
 };
 
 // Oldal betöltésekor automatikusan betöltjük a számlákat
