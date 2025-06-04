@@ -139,3 +139,8 @@ export function updateInvoice(id, data) {
         id
     );
 }
+
+// Törli azokat a számlákat, ahol a fizetési határidő 5 évnél régebbi
+export function deleteInvoicesBeforeDeadline(deadlineDate) {
+    return db.prepare("DELETE FROM invoices WHERE payment_deadline <= ?").run(deadlineDate);
+}

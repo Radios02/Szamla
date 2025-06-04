@@ -85,5 +85,6 @@ window.editInvoice = async (id) => {
     calcVatAmount();
 };
 
+
 // Oldal betöltésekor automatikusan betöltjük a számlákat
 loadInvoices();

@@ -66,6 +66,22 @@ app.delete("/invoices/:id", (req, res) => {
     }
 });
 
+// Számlák automatikus törlése, ha a fizetési határidő + 5 év eltelt jogszabály miatt
+function deleteOldInvoices() {
+    const now = new Date();
+    // ISO stringből csak a dátum kell
+    const fiveYearsAgo = new Date(now.setFullYear(now.getFullYear() - 5)).toISOString().slice(0, 10);
+    // Töröljük azokat, ahol a fizetési határidő 5 évnél régebbi
+    const deleted = db.deleteInvoicesBeforeDeadline(fiveYearsAgo);
+    if (deleted.changes > 0) {
+        console.log(`Törölt számlák száma: ${deleted.changes}`);
+    }
+}
+
+// Indításkor és utána naponta egyszer futtatjuk
+deleteOldInvoices();
+setInterval(deleteOldInvoices, 24 * 60 * 60 * 1000); // 24 óra
+
 app.listen(PORT, () => {
     console.log(`Server runs on port ${PORT}`);
 });
