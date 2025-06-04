@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 const dbPath = path.join(__dirname, "../data/szamla.sqlite");
 const db = new Database(dbPath);
 
-// Egyetlen számlák tábla, minden adat egy helyen
+// Számlák tábla létrehozása stornó mezővel (ha még nincs)
 db.exec(`
 CREATE TABLE IF NOT EXISTS invoices (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,11 +23,12 @@ CREATE TABLE IF NOT EXISTS invoices (
     payment_deadline TEXT NOT NULL,
     total_amount REAL NOT NULL,
     vat_percent INTEGER NOT NULL,
-    vat_amount REAL NOT NULL
+    vat_amount REAL NOT NULL,
+    storno INTEGER DEFAULT 0
 );
 `);
 
-// Egyedi, 5 számjegyű számlaszám generálása
+// Egyedi, 5 számjegyű számlaszám generálása (eladónként szigorúan sorszámozott lehetőséghez igazítható)
 function generateInvoiceNumber() {
     let num;
     let exists;
@@ -46,8 +47,8 @@ if (invoiceCount === 0) {
             issuer_name, issuer_address, issuer_tax_number,
             customer_name, customer_address, customer_tax_number,
             invoice_number, issue_date, fulfillment_date, payment_deadline,
-            total_amount, vat_percent, vat_amount
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            total_amount, vat_percent, vat_amount, storno
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const today = new Date();
     for (let c = 1; c <= 3; c++) {
@@ -64,13 +65,13 @@ if (invoiceCount === 0) {
                 "Cég Kft.", "1000 Budapest, Céges út 10.", "87654321-1-00",
                 `Vevő ${c}`, `${c}000 ${c} Budapest, Vevő utca ${c}.`, `1234567${c}-1-1${c}`,
                 generateInvoiceNumber(), issue_date, fulfillment_date, payment_deadline,
-                total_amount, vat_percent, vat_amount
+                total_amount, vat_percent, vat_amount, 0
             );
         }
     }
 }
 
-// Számlák lekérdezése
+// Számlák lekérdezése (stornózás megjelenítése)
 export function getInvoices() {
     return db.prepare("SELECT * FROM invoices ORDER BY id DESC").all();
 }
@@ -80,12 +81,20 @@ export function getInvoice(id) {
     return db.prepare("SELECT * FROM invoices WHERE id = ?").get(id);
 }
 
-// Számla hozzáadása
+// Számla hozzáadása jogszabályi feltételekkel
 export function addInvoice(data) {
+    // A vevő adatai a számlán rögzítve maradnak, későbbi vevő módosítás nem érinti a számlát!
     const invoice_number = generateInvoiceNumber();
     const issue_date = new Date().toISOString().slice(0, 10);
-    const payment_deadline = new Date(new Date(issue_date).setMonth(new Date(issue_date).getMonth() + 6))
-        .toISOString().slice(0, 10);
+    const fulfillment_date = data.fulfillment_date;
+    // Fizetési határidő: teljesítés + 30 nap
+    const maxDeadline = new Date(new Date(fulfillment_date).getTime() + 30 * 24 * 60 * 60 * 1000);
+    const payment_deadline = data.payment_deadline || maxDeadline.toISOString().slice(0, 10);
+
+    if (new Date(payment_deadline) > maxDeadline) {
+        throw new Error("A fizetési határidő nem lehet több, mint a teljesítés dátuma + 30 nap!");
+    }
+
     const vat_percent = parseInt(data.vat_percent, 10);
     const total_amount = parseFloat(data.total_amount);
     const vat_amount = Math.round(total_amount * vat_percent / 100);
@@ -95,52 +104,34 @@ export function addInvoice(data) {
             issuer_name, issuer_address, issuer_tax_number,
             customer_name, customer_address, customer_tax_number,
             invoice_number, issue_date, fulfillment_date, payment_deadline,
-            total_amount, vat_percent, vat_amount
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            total_amount, vat_percent, vat_amount, storno
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
         data.issuer_name, data.issuer_address, data.issuer_tax_number,
         data.customer_name, data.customer_address, data.customer_tax_number,
-        invoice_number, issue_date, data.fulfillment_date, payment_deadline,
-        total_amount, vat_percent, vat_amount
+        invoice_number, issue_date, fulfillment_date, payment_deadline,
+        total_amount, vat_percent, vat_amount, 0
     );
 }
 
-// Számla törlése
-export function deleteInvoice(id) {
-    return db.prepare("DELETE FROM invoices WHERE id = ?").run(id);
-}
-
+// Számla szerkesztése tiltott (jogszabály szerint), csak stornózás és új számla engedélyezett
 export function updateInvoice(id, data) {
-    const vat_percent = parseInt(data.vat_percent, 10);
-    const total_amount = parseFloat(data.total_amount);
-    const vat_amount = Math.round(total_amount * vat_percent / 100);
-    const payment_deadline = new Date(new Date(data.issue_date).setMonth(new Date(data.issue_date).getMonth() + 6))
-        .toISOString().slice(0, 10);
-
-    return db.prepare(`
-        UPDATE invoices SET
-            issuer_name = ?,
-            issuer_address = ?,
-            issuer_tax_number = ?,
-            customer_name = ?,
-            customer_address = ?,
-            customer_tax_number = ?,
-            fulfillment_date = ?,
-            payment_deadline = ?,
-            total_amount = ?,
-            vat_percent = ?,
-            vat_amount = ?
-        WHERE id = ?
-    `).run(
-        data.issuer_name, data.issuer_address, data.issuer_tax_number,
-        data.customer_name, data.customer_address, data.customer_tax_number,
-        data.fulfillment_date, payment_deadline,
-        total_amount, vat_percent, vat_amount,
-        id
-    );
+    throw new Error("Kiállított számlát nem lehet módosítani! Csak stornózni és újat kiállítani lehet.");
 }
 
-// Törli azokat a számlákat, ahol a fizetési határidő 5 évnél régebbi
+// Számla törlése helyett stornózás
+export function stornoInvoice(id) {
+    // A számla stornózásával megmarad az eredeti, csak a storno mező lesz 1
+    return db.prepare("UPDATE invoices SET storno = 1 WHERE id = ?").run(id);
+}
+
+// Régi törlés funkció (nem használható jogszabály szerint)
+// export function deleteInvoice(id) {
+//     return db.prepare("DELETE FROM invoices WHERE id = ?").run(id);
+// }
+
+// 5 évnél régebbi számlák törlése (csak archiválásra, nem végleges törlésre javasolt)
 export function deleteInvoicesBeforeDeadline(deadlineDate) {
+    // Jogszabály: legalább 5 évig meg kell őrizni a számlákat!
     return db.prepare("DELETE FROM invoices WHERE payment_deadline <= ?").run(deadlineDate);
 }

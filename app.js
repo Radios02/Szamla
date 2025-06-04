@@ -66,6 +66,16 @@ app.delete("/invoices/:id", (req, res) => {
     }
 });
 
+// Számla stornózása
+app.delete("/invoices/:id", (req, res) => {
+    try {
+        db.stornoInvoice(req.params.id);
+        res.status(204).end();
+    } catch (err) {
+        res.status(400).json({ message: `${err}` });
+    }
+});
+
 // Számlák automatikus törlése, ha a fizetési határidő + 5 év eltelt jogszabály miatt
 function deleteOldInvoices() {
     const now = new Date();
